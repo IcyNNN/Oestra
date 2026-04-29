@@ -5,7 +5,6 @@ import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { ArrowUp, Sparkles } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -127,14 +126,14 @@ export default function Home() {
               placeholder="写下你现在的感受..."
               className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-1 py-2 text-base leading-6 text-oestra-ink outline-none placeholder:text-oestra-purple/35 disabled:cursor-not-allowed disabled:opacity-60"
             />
-            <Button
+            <button
               type="submit"
               disabled={isSending || !input.trim()}
-              className="h-11 w-11 rounded-full bg-oestra-purple p-0 text-oestra-cream hover:bg-oestra-purple/90"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-oestra-purple p-0 text-oestra-cream transition-colors hover:bg-oestra-purple/90 disabled:cursor-not-allowed disabled:opacity-45"
               aria-label="发送消息"
             >
               <ArrowUp className="h-4 w-4" aria-hidden="true" />
-            </Button>
+            </button>
           </div>
           <p className="mt-3 text-center text-xs text-oestra-purple/45">
             Oestra 不能替代医生；严重或持续的不适请咨询专业医生。
