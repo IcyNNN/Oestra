@@ -21,6 +21,18 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ```
 
+## Supabase setup
+
+Run the SQL in `supabase/migrations/0001_initial_oestra_data.sql` in the
+Supabase SQL Editor before testing signed-in persistence.
+
+The first data boundary is intentionally simple:
+
+- Anonymous visitors can chat, but messages are not stored.
+- Signed-in users can create chat sessions and store their own messages.
+- Health profile, cycle logs, and symptom logs are scoped to the signed-in user
+  with Supabase Row Level Security.
+
 ## Scripts
 
 ```bash
