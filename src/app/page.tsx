@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useMemo, useState } from "react";
+import { KeyboardEvent, useMemo, useRef } from "react";
 import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { ArrowUp, Sparkles } from "lucide-react";
@@ -18,7 +18,7 @@ function messageText(parts: { type: string; text?: string }[]) {
 }
 
 export default function Home() {
-  const [input, setInput] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const transport = useMemo(
     () => new DefaultChatTransport({ api: "/api/chat" }),
     [],
@@ -27,22 +27,22 @@ export default function Home() {
 
   const isSending = status === "submitted" || status === "streaming";
 
-  async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
-    event?.preventDefault();
-
-    const text = input.trim();
+  async function sendCurrentMessage() {
+    const text = textareaRef.current?.value.trim() ?? "";
     if (!text || isSending) {
       return;
     }
 
-    setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.value = "";
+    }
     await sendMessage({ text });
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      void handleSubmit();
+      void sendCurrentMessage();
     }
   }
 
@@ -112,14 +112,10 @@ export default function Home() {
           </p>
         ) : null}
 
-        <form
-          onSubmit={(event) => void handleSubmit(event)}
-          className="border-t border-oestra-mist/80 bg-white/35 p-4 sm:p-5"
-        >
+        <div className="border-t border-oestra-mist/80 bg-white/35 p-4 sm:p-5">
           <div className="flex items-end gap-3 rounded-2xl border border-oestra-mist bg-oestra-cream/75 p-3">
             <textarea
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
+              ref={textareaRef}
               onKeyDown={handleKeyDown}
               disabled={isSending}
               rows={1}
@@ -127,8 +123,9 @@ export default function Home() {
               className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-1 py-2 text-base leading-6 text-oestra-ink outline-none placeholder:text-oestra-purple/35 disabled:cursor-not-allowed disabled:opacity-60"
             />
             <button
-              type="submit"
-              disabled={isSending || !input.trim()}
+              type="button"
+              onClick={() => void sendCurrentMessage()}
+              disabled={isSending}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-oestra-purple p-0 text-oestra-cream transition-colors hover:bg-oestra-purple/90 disabled:cursor-not-allowed disabled:opacity-45"
               aria-label="发送消息"
             >
@@ -138,7 +135,7 @@ export default function Home() {
           <p className="mt-3 text-center text-xs text-oestra-purple/45">
             Oestra 不能替代医生；严重或持续的不适请咨询专业医生。
           </p>
-        </form>
+        </div>
       </Card>
     </main>
   );
