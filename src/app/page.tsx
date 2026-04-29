@@ -1,10 +1,19 @@
 "use client";
 
-import { KeyboardEvent, useMemo, useRef } from "react";
+import {
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { ArrowUp, Sparkles } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
 
+import { AuthPanel } from "@/components/auth-panel";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -19,13 +28,76 @@ function messageText(parts: { type: string; text?: string }[]) {
 
 export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [sessionStatus, setSessionStatus] = useState<
+    "idle" | "loading" | "saved" | "error"
+  >("idle");
   const transport = useMemo(
-    () => new DefaultChatTransport({ api: "/api/chat" }),
-    [],
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        body: () => ({ sessionId: chatSessionId }),
+      }),
+    [chatSessionId],
   );
   const { messages, sendMessage, status, error } = useChat({ transport });
 
   const isSending = status === "submitted" || status === "streaming";
+
+  const handleUserChange = useCallback((nextUser: User | null) => {
+    setUser(nextUser);
+    setChatSessionId(null);
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    let isCurrent = true;
+
+    async function createSession() {
+      setSessionStatus("loading");
+
+      try {
+        const response = await fetch("/api/chat/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: "Oestra chat" }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Could not create a saved chat session.");
+        }
+
+        const data: { sessionId: string } = await response.json();
+
+        if (isCurrent) {
+          setChatSessionId(data.sessionId);
+          setSessionStatus("saved");
+        }
+      } catch {
+        if (isCurrent) {
+          setSessionStatus("error");
+        }
+      }
+    }
+
+    void createSession();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [user]);
+
+  const sessionMessage = !user
+    ? "匿名模式：可以聊天，但不会保存对话。登录后会开始保存。"
+    : sessionStatus === "saved"
+      ? "已登录：这段对话会保存到你的 Oestra 账户。"
+      : sessionStatus === "error"
+        ? "登录已连接，但暂时无法保存对话。你仍可以继续聊天。"
+        : "正在准备保存这段对话...";
 
   async function sendCurrentMessage() {
     const text = textareaRef.current?.value.trim() ?? "";
@@ -58,6 +130,10 @@ export default function Home() {
           </h1>
           <p className="mt-2 text-sm uppercase tracking-[0.34em] text-oestra-purple/55">
             a quiet revolution
+          </p>
+          <AuthPanel onUserChange={handleUserChange} />
+          <p className="mt-4 text-xs text-oestra-purple/45">
+            {sessionMessage}
           </p>
         </header>
 
