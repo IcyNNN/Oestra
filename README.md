@@ -23,8 +23,20 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
 ## Supabase setup
 
-Run the SQL in `supabase/migrations/0001_initial_oestra_data.sql` in the
-Supabase SQL Editor before testing signed-in persistence.
+Run the SQL files in `supabase/migrations` in order in the Supabase SQL Editor
+before testing signed-in persistence.
+
+In Supabase Authentication URL Configuration, set:
+
+- Site URL: `https://oestra.vercel.app`
+- Redirect URLs: `https://oestra.vercel.app/**` and `http://localhost:3000/**`
+
+The auth flow is:
+
+1. New users request a confirmation link with their email.
+2. The email link returns to `/auth/callback`.
+3. The user sets a password and Oestra creates their profile record.
+4. Returning users sign in with email and password.
 
 The first data boundary is intentionally simple:
 

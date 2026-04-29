@@ -10,7 +10,9 @@ type AuthPanelProps = {
 };
 
 export function AuthPanel({ onUserChange }: AuthPanelProps) {
+  const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,7 +43,7 @@ export function AuthPanel({ onUserChange }: AuthPanelProps) {
     };
   }, [onUserChange]);
 
-  async function handleSignIn(event: FormEvent<HTMLFormElement>) {
+  async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedEmail = email.trim();
 
@@ -49,13 +51,37 @@ export function AuthPanel({ onUserChange }: AuthPanelProps) {
       return;
     }
 
-    setStatus("正在发送登录链接...");
     const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithOtp({
+
+    if (mode === "sign-up") {
+      setStatus("正在发送邮箱验证链接...");
+      const { error } = await supabase.auth.signInWithOtp({
+        email: trimmedEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          shouldCreateUser: true,
+        },
+      });
+
+      if (error) {
+        setStatus(error.message);
+        return;
+      }
+
+      setStatus("验证链接已发送。请打开邮箱，回到 Oestra 设置密码。");
+      setEmail("");
+      return;
+    }
+
+    if (!password) {
+      setStatus("请输入密码。");
+      return;
+    }
+
+    setStatus("正在登录...");
+    const { error } = await supabase.auth.signInWithPassword({
       email: trimmedEmail,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
+      password,
     });
 
     if (error) {
@@ -63,8 +89,9 @@ export function AuthPanel({ onUserChange }: AuthPanelProps) {
       return;
     }
 
-    setStatus("登录链接已发送，请检查邮箱。");
+    setStatus(null);
     setEmail("");
+    setPassword("");
   }
 
   async function handleSignOut() {
@@ -108,12 +135,42 @@ export function AuthPanel({ onUserChange }: AuthPanelProps) {
 
   return (
     <form
-      onSubmit={(event) => void handleSignIn(event)}
+      onSubmit={(event) => void handleAuth(event)}
       className="space-y-2 rounded-2xl border border-oestra-mist bg-white/35 p-3"
     >
       <p className="text-center text-xs text-oestra-purple/55">
-        现在可匿名聊天；登录后会保存你的对话与健康记录。
+        现在可匿名聊天；注册/登录后会保存你的对话与健康记录。
       </p>
+      <div className="grid grid-cols-2 rounded-xl border border-oestra-mist bg-oestra-cream/80 p-1 text-xs">
+        <button
+          type="button"
+          onClick={() => {
+            setMode("sign-in");
+            setStatus(null);
+          }}
+          className={`rounded-lg px-3 py-2 ${
+            mode === "sign-in"
+              ? "bg-white text-oestra-purple"
+              : "text-oestra-purple/55"
+          }`}
+        >
+          登录
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMode("sign-up");
+            setStatus(null);
+          }}
+          className={`rounded-lg px-3 py-2 ${
+            mode === "sign-up"
+              ? "bg-white text-oestra-purple"
+              : "text-oestra-purple/55"
+          }`}
+        >
+          注册
+        </button>
+      </div>
       <div className="flex gap-2">
         <input
           type="email"
@@ -122,14 +179,30 @@ export function AuthPanel({ onUserChange }: AuthPanelProps) {
           placeholder="you@example.com"
           className="min-w-0 flex-1 rounded-xl border border-oestra-mist bg-oestra-cream/80 px-3 py-2 text-sm text-oestra-ink outline-none placeholder:text-oestra-purple/35"
         />
+        {mode === "sign-in" ? (
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.currentTarget.value)}
+            placeholder="密码"
+            className="min-w-0 flex-1 rounded-xl border border-oestra-mist bg-oestra-cream/80 px-3 py-2 text-sm text-oestra-ink outline-none placeholder:text-oestra-purple/35"
+          />
+        ) : null}
         <button
           type="submit"
           className="rounded-xl bg-oestra-purple px-4 py-2 text-sm font-medium text-oestra-cream transition-colors hover:bg-oestra-purple/90"
         >
-          登录
+          {mode === "sign-up" ? "发送验证" : "登录"}
         </button>
       </div>
-      {status ? <p className="text-center text-xs text-oestra-purple/45">{status}</p> : null}
+      {mode === "sign-up" ? (
+        <p className="text-center text-xs text-oestra-purple/45">
+          新用户会先收到邮箱验证链接，点开后再设置密码。
+        </p>
+      ) : null}
+      {status ? (
+        <p className="text-center text-xs text-oestra-purple/45">{status}</p>
+      ) : null}
     </form>
   );
 }
