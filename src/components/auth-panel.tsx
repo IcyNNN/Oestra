@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import Link from "next/link";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
@@ -14,26 +15,45 @@ export function AuthPanel({ onUserChange }: AuthPanelProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [user, setUser] = useState<User | null>(null);
+  const [needsPassword, setNeedsPassword] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const syncProfileState = useCallback(async (currentUser: User | null) => {
+    setUser(currentUser);
+    onUserChange(currentUser);
+
+    if (!currentUser) {
+      setNeedsPassword(false);
+      return;
+    }
+
+    const response = await fetch("/api/profile", { method: "POST" });
+    if (!response.ok) {
+      return;
+    }
+
+    const data: { profile?: { password_set_at?: string | null } | null } =
+      await response.json();
+
+    setNeedsPassword(!data.profile?.password_set_at);
+  }, [onUserChange]);
 
   useEffect(() => {
     let isMounted = true;
     const supabase = createSupabaseBrowserClient();
 
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(async ({ data }) => {
       if (!isMounted) {
         return;
       }
 
-      setUser(data.user);
-      onUserChange(data.user);
+      await syncProfileState(data.user);
       setIsLoading(false);
     });
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      onUserChange(session?.user ?? null);
+      void syncProfileState(session?.user ?? null);
     });
     const { subscription } = data;
 
@@ -41,7 +61,7 @@ export function AuthPanel({ onUserChange }: AuthPanelProps) {
       isMounted = false;
       subscription?.unsubscribe();
     };
-  }, [onUserChange]);
+  }, [syncProfileState]);
 
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -121,6 +141,19 @@ export function AuthPanel({ onUserChange }: AuthPanelProps) {
         <p className="text-xs text-oestra-purple/60">
           已登录：{user.email ?? "Oestra user"}。你的对话会保存到 Supabase。
         </p>
+        {needsPassword ? (
+          <div className="rounded-xl border border-oestra-blush/30 bg-oestra-cream/80 p-3">
+            <p className="text-xs leading-5 text-oestra-purple/65">
+              还差一步：设置密码后账号才算完成注册。
+            </p>
+            <Link
+              href="/auth/set-password"
+              className="mt-2 inline-flex rounded-xl bg-oestra-purple px-4 py-2 text-xs font-medium text-oestra-cream transition-colors hover:bg-oestra-purple/90"
+            >
+              设置密码
+            </Link>
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={() => void handleSignOut()}

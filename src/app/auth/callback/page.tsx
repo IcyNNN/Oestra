@@ -26,6 +26,7 @@ function AuthCallbackContent() {
       }
 
       await fetch("/api/profile", { method: "POST" });
+      setMessage("邮箱确认成功，正在带你设置密码...");
       router.replace("/auth/set-password");
     }
 

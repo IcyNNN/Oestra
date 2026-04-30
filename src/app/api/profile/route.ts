@@ -13,7 +13,7 @@ export async function GET() {
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, email, display_name, created_at, updated_at")
+    .select("id, email, display_name, password_set_at, created_at, updated_at")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -41,7 +41,12 @@ async function upsertProfile(req?: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { displayName }: { displayName?: string } = req ? await req.json() : {};
+  const {
+    displayName,
+    passwordSet,
+  }: { displayName?: string; passwordSet?: boolean } = req
+    ? await req.json()
+    : {};
   const { data: profile, error } = await supabase
     .from("profiles")
     .upsert(
@@ -49,11 +54,12 @@ async function upsertProfile(req?: Request) {
         id: user.id,
         email: user.email,
         display_name: displayName?.trim() || null,
+        ...(passwordSet ? { password_set_at: new Date().toISOString() } : {}),
         updated_at: new Date().toISOString(),
       },
       { onConflict: "id" },
     )
-    .select("id, email, display_name, created_at, updated_at")
+    .select("id, email, display_name, password_set_at, created_at, updated_at")
     .single();
 
   if (error) {
