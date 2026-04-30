@@ -24,3 +24,26 @@ create policy "Users can update their profile"
   on public.profiles for update
   using (auth.uid() = id)
   with check (auth.uid() = id);
+
+create or replace function public.handle_new_user_profile()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email)
+  values (new.id, new.email)
+  on conflict (id) do update
+    set email = excluded.email,
+        updated_at = now();
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created_create_profile on auth.users;
+
+create trigger on_auth_user_created_create_profile
+  after insert on auth.users
+  for each row execute function public.handle_new_user_profile();
