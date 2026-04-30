@@ -30,7 +30,7 @@ export async function GET() {
   });
 }
 
-export async function PUT(req: Request) {
+async function upsertProfile(req?: Request) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -41,7 +41,7 @@ export async function PUT(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { displayName }: { displayName?: string } = await req.json();
+  const { displayName }: { displayName?: string } = req ? await req.json() : {};
   const { data: profile, error } = await supabase
     .from("profiles")
     .upsert(
@@ -61,5 +61,13 @@ export async function PUT(req: Request) {
   }
 
   return Response.json({ profile });
+}
+
+export async function POST() {
+  return upsertProfile();
+}
+
+export async function PUT(req: Request) {
+  return upsertProfile(req);
 }
 
